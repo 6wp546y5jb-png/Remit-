@@ -1,100 +1,134 @@
--- ================================================================
---  SUPER FAST brute‑force for SupernovaScoreEffect
---  Tests likely remotes with numbers 1–500, 0.05s delay
--- ================================================================
+--[[
+    Complete Auto Lucky Spins Script
+    Execute this as a LocalScript (or in any executor)
+]]
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Knit = ReplicatedStorage:WaitForChild("Packages")
-    :WaitForChild("_Index")
-    :WaitForChild("sleitnick_knit@1.7.0")
-    :WaitForChild("knit")
+local Players = game:GetService("Players")
+local Player = Players.LocalPlayer
+local GuiService = game:GetService("GuiService")
 
-local InventoryChanged = Knit:WaitForChild("Services")
-    :WaitForChild("InventoryService")
-    :WaitForChild("RE")
-    :WaitForChild("InventoryChanged")
+-- ===== 1. Locate the remote =====
+local remote
+pcall(function()
+    remote = game:GetService("ReplicatedStorage")
+        :WaitForChild("Packages")
+        :WaitForChild("_Index")
+        :WaitForChild("sleitnick_knit@1.7.0")
+        :WaitForChild("knit")
+        :WaitForChild("Services")
+        :WaitForChild("SeasonService")
+        :WaitForChild("RF")
+        :WaitForChild("RequestRebirthReward")
+end)
 
-local found = false
-local winnerRemote, winnerNumber, winnerPattern
+if not remote then
+    warn("Remote not found! Check the path or update the version.")
+    return
+end
 
-InventoryChanged.OnClientEvent:Connect(function(itemName, count)
-    if itemName == "SupernovaScoreEffect" then
-        found = true
-        winnerNumber = count
-        print(string.format("\n🎉 GOT IT! Remote: %s  Number: %d  Pattern: %s", winnerRemote, winnerNumber, winnerPattern))
+-- ===== 2. Create GUI =====
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoLuckySpinsGUI"
+screenGui.Parent = Player:WaitForChild("PlayerGui")
+
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 250, 0, 100)
+frame.Position = UDim2.new(0.5, -125, 0.5, -50)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BorderSizePixel = 0
+frame.BackgroundTransparency = 0.1
+frame.Active = true
+frame.Draggable = true
+frame.Parent = screenGui
+
+-- Title
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "Auto Lucky Spins"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextScaled = true
+title.Font = Enum.Font.GothamBold
+title.Parent = frame
+
+-- Toggle Button
+local toggleBtn = Instance.new("TextButton")
+toggleBtn.Size = UDim2.new(0.8, 0, 0, 40)
+toggleBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
+toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+toggleBtn.Text = "Enable"
+toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleBtn.TextScaled = true
+toggleBtn.Font = Enum.Font.GothamBold
+toggleBtn.Parent = frame
+
+-- Status label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, 0, 0, 20)
+statusLabel.Position = UDim2.new(0, 0, 0.8, 0)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = "Status: Off"
+statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+statusLabel.TextScaled = true
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = frame
+
+-- ===== 3. Control variables =====
+_G.LuckySpinsEnabled = false   -- global toggle (used by the loop)
+local loopRunning = false
+local loopCoroutine = nil
+
+-- ===== 4. The main loop =====
+local function startLoop()
+    if loopRunning then return end
+    loopRunning = true
+    loopCoroutine = task.spawn(function()
+        while loopRunning do
+            if _G.LuckySpinsEnabled then
+                pcall(function()
+                    remote:InvokeServer(5)
+                end)
+                task.wait(0.5)
+            else
+                task.wait(0.2)   -- wait a bit before checking again
+            end
+        end
+    end)
+end
+
+-- ===== 5. Toggle function =====
+local function toggleState()
+    _G.LuckySpinsEnabled = not _G.LuckySpinsEnabled
+    if _G.LuckySpinsEnabled then
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
+        toggleBtn.Text = "Disable"
+        statusLabel.Text = "Status: Running"
+        if not loopRunning then
+            startLoop()
+        end
+    else
+        toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+        toggleBtn.Text = "Enable"
+        statusLabel.Text = "Status: Off"
+    end
+end
+
+-- ===== 6. Connect button =====
+toggleBtn.MouseButton1Click:Connect(toggleState)
+
+-- ===== 7. Clean up when GUI is destroyed =====
+screenGui.AncestryChanged:Connect(function()
+    if not screenGui.Parent then
+        loopRunning = false
+        if loopCoroutine then
+            task.cancel(loopCoroutine)
+        end
     end
 end)
 
--- Patterns: try both with and without item name
-local patterns = {
-    {name = "WithName", call = function(remote, i) return remote:InvokeServer("SupernovaScoreEffect", i) end},
-    {name = "JustNumber", call = function(remote, i) return remote:InvokeServer(i) end},
-}
+-- Start the loop (it will idle until toggled on)
+startLoop()
 
--- Priority remotes (most likely)
-local priorityRemotes = {
-    Knit.Services.SeasonService.RF:FindFirstChild("RequestRebirthReward"),
-    Knit.Services.SeasonService.RF:FindFirstChild("RequestRewardClaim"),
-    Knit.Services.SeasonService.RF:FindFirstChild("ClaimDailyPresent"),
-    -- Add more if you know them
-}
-
--- Collect all other remotes (fallback)
-local allRemotes = {}
-for _, service in ipairs(Knit.Services:GetChildren()) do
-    local rf = service:FindFirstChild("RF")
-    if rf then
-        for _, child in ipairs(rf:GetChildren()) do
-            if child:IsA("RemoteFunction") then
-                table.insert(allRemotes, child)
-            end
-        end
-    end
-end
-
--- Combine priority (non‑nil) + others, but priority first
-local remotesToTest = {}
-for _, r in ipairs(priorityRemotes) do
-    if r then table.insert(remotesToTest, r) end
-end
-for _, r in ipairs(allRemotes) do
-    -- avoid duplicates
-    local dup = false
-    for _, existing in ipairs(remotesToTest) do
-        if existing == r then dup = true; break end
-    end
-    if not dup then table.insert(remotesToTest, r) end
-end
-
-print("🔍 Testing " .. #remotesToTest .. " remotes, numbers 1–500, 0.05s wait...")
-
-task.spawn(function()
-    for _, remote in ipairs(remotesToTest) do
-        if found then break end
-        local remoteName = remote.Parent.Parent.Name .. "." .. remote.Name  -- e.g., SeasonService.RequestRebirthReward
-        print("\n▶ " .. remoteName)
-
-        for _, pat in ipairs(patterns) do
-            if found then break end
-            winnerRemote = remoteName
-            winnerPattern = pat.name
-
-            for i = 1, 500 do
-                if found then break end
-                pcall(pat.call, remote, i)  -- ignore errors
-                if i % 50 == 0 then
-                    print(string.format("   %s: %d / 500", pat.name, i))
-                end
-                task.wait(0.05)  -- <-- super fast
-            end
-
-            if not found then
-                print("   ❌ Pattern '" .. pat.name .. "' didn't find it in 1–500")
-            end
-        end
-    end
-
-    if not found then
-        print("\n❌ Not found in 1–500. Try increasing to 10000 or adding more patterns.")
-    end
-end)
+print("Auto Lucky Spins GUI loaded. Toggle it to start farming.")
