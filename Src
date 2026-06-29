@@ -18,7 +18,7 @@ pcall(function()
         :WaitForChild("Services")
         :WaitForChild("SeasonService")
         :WaitForChild("RF")
-        :WaitForChild("RequestRebirthReward")
+        :WaitForChild("RequestRankedReward")
 end)
 
 if not remote then
