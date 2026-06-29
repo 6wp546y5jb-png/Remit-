@@ -1,47 +1,46 @@
-local player = game.Players.LocalPlayer
-local replicatedStorage = game:GetService("ReplicatedStorage")
+local remote = game:GetService("ReplicatedStorage")
+    :WaitForChild("Packages")
+    :WaitForChild("_Index")
+    :WaitForChild("sleitnick_knit@1.7.0")
+    :WaitForChild("knit")
+    :WaitForChild("Services")
+    :WaitForChild("SeasonService")
+    :WaitForChild("RF")
+    :WaitForChild("RequestRebirthReward")
 
--- Locate SeasonService (adjust path if needed)
-local seasonService = replicatedStorage:FindFirstChild("SeasonService") 
-    or game:GetService("SeasonService") 
-    or replicatedStorage:FindFirstChild("Services"):FindFirstChild("SeasonService")
+print("✅ Remote found at:", remote:GetFullName())
 
-if not seasonService then
-    warn("SeasonService not found")
-    return
-end
-
-local remote = seasonService:FindFirstChild("RequestRebirthReward")
-if not remote then
-    warn("Remote not found")
-    return
-end
-
--- Test different argument formats
+-- Comprehensive test cases
 local testCases = {
-    { "2" },        -- Season ID as string (from config)
-    { 2 },          -- Season ID as number
-    { 5 },          -- Rebirth count (5)
-    { 1 },          -- Tier index (like the other remote)
-    { "2", 5 },     -- Season ID + rebirth count
-    { "2", 1 },     -- Season ID + tier index
-    { 2, 5 },       -- Number season ID + rebirth count
-    {}              -- No arguments
+    {},                                 -- No arguments
+    {"2"},                              -- Season ID as string (from config)
+    {2},                                -- Season ID as number
+    {5},                                -- Rebirth requirement count
+    {1},                                -- Tier index (worked on your other remote)
+    {"Supernova"},                      -- Display name
+    {"SupernovaScoreEffect"},           -- Exact script/item name (with 't')
+    {"SupernovaScoreEffecr"},           -- Your typo (just in case)
+    {"2", 5},                           -- Season string + rebirth count
+    {2, 5},                             -- Season number + rebirth count
+    {"2", 1},                           -- Season string + tier index
+    {2, 1},                             -- Season number + tier index
+    {"2", "SupernovaScoreEffect"},      -- Season string + item name
+    {2, "SupernovaScoreEffect"},        -- Season number + item name
 }
 
 for i, args in ipairs(testCases) do
     local success, result = pcall(function()
         return remote:InvokeServer(unpack(args))
     end)
-    
+
     if success then
-        print("✅ Test " .. i .. " succeeded with args:", unpack(args))
-        print("   Response:", result)
-        -- If it succeeded, this is the correct format!
+        print("✅ Test " .. i .. " SUCCEEDED with args:", unpack(args))
+        print("   Server response:", result)
+        print("🎯 THIS IS THE CORRECT FORMAT!")
         break
     else
         print("❌ Test " .. i .. " failed with args:", unpack(args))
         print("   Error:", result)
     end
-    task.wait(0.5) -- Avoid spamming
+    task.wait(0.3)
 end
