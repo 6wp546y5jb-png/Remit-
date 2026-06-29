@@ -20,60 +20,37 @@ local InventoryChanged = Knit:WaitForChild("Services")
 
 local found = false
 local winningNumber = nil
-local winningPattern = nil
 
 InventoryChanged.OnClientEvent:Connect(function(itemName, count)
     if itemName == "SupernovaScoreEffect" then
         found = true
         winningNumber = count
-        print(string.format("\n🎉🎉🎉 SUCCESS! SupernovaScoreEffect granted with number %d (pattern: %s)", winningNumber, winningPattern))
+        print(string.format("\n🎉 SUCCESS! SupernovaScoreEffect granted with number %d", winningNumber))
     end
 end)
 
--- Possible invocation patterns to try
-local patterns = {
-    { name = "Table {Item='SupernovaScoreEffect', Cap=i}", 
-      call = function(i) return RequestRebirthReward:InvokeServer({Item = "SupernovaScoreEffect", Cap = i}) end },
-    { name = "Two args: ('SupernovaScoreEffect', i)", 
-      call = function(i) return RequestRebirthReward:InvokeServer("SupernovaScoreEffect", i) end },
-    -- Add more if needed: { name = "Just number (i)", call = function(i) return RequestRebirthReward:InvokeServer(i) end }
-}
-
 task.spawn(function()
-    print("🔍 Testing RequestRebirthReward with 'SupernovaScoreEffect' and numbers 1–100...")
+    print("🔍 Testing RequestRebirthReward with 'SupernovaScoreEffect' + number (1–100)...")
 
-    for _, pattern in ipairs(patterns) do
+    for i = 1, 100 do
         if found then break end
-        print("\n▶ Trying pattern:", pattern.name)
 
-        for i = 1, 100 do
-            if found then break end
+        local success, result = pcall(function()
+            -- Send the item name and the number as two arguments
+            RequestRebirthReward:InvokeServer("SupernovaScoreEffect", i)
+        end)
 
-            local success, result = pcall(pattern.call, i)
-            if not success then
-                -- Some patterns might error; skip silently
-            end
-
-            if i % 10 == 0 then
-                print(string.format("   %s: tested %d / 100", pattern.name, i))
-            end
-
-            task.wait(0.3) -- avoid rate‑limiting
+        if i % 10 == 0 then
+            print(string.format("   Tested %d / 100", i))
         end
 
-        if not found then
-            print(string.format("   ❌ Pattern '%s' did not grant the item in 1–100", pattern.name))
-        end
+        task.wait(0.3)
     end
 
     if not found then
-        print("\n❌ No pattern worked with numbers 1–100.")
-        print("💡 Try:")
-        print("   - Increasing the range to 1000 or 10000.")
-        print("   - Changing the field names (e.g., 'cap' instead of 'Cap').")
-        print("   - Testing other remotes like 'RequestRewardClaim'.")
-        print("   - Using a different table structure, e.g., {reward = 'SupernovaScoreEffect', value = i}.")
+        print("\n❌ Not found in 1–100.")
+        print("💡 Try increasing to 10000, or try just sending the number alone.")
     else
-        print(string.format("\n✅ Found it! Use pattern '%s' with number %d", winningPattern, winningNumber))
+        print(string.format("\n✅ Found it! Use number %d", winningNumber))
     end
 end)
