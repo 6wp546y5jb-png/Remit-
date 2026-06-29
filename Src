@@ -1,0 +1,66 @@
+-- 1) Locate the server RemoteFunction (RequestRankedReward)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Knit = ReplicatedStorage:WaitForChild("Packages")
+    :WaitForChild("_Index")
+    :WaitForChild("sleitnick_knit@1.7.0")
+    :WaitForChild("knit")
+
+local RequestRankedReward = Knit
+    :WaitForChild("Services")
+    :WaitForChild("SeasonService")
+    :WaitForChild("RF")
+    :WaitForChild("RequestRankedReward")
+
+-- 2) Locate the InventoryChanged event (to detect when the item is added)
+local InventoryChanged = Knit
+    :WaitForChild("Services")
+    :WaitForChild("InventoryService")
+    :WaitForChild("RE")
+    :WaitForChild("InventoryChanged")
+
+-- 3) Variables to track success
+local found = false
+local foundNumber = nil
+local currentNumber = nil
+
+-- 4) Listen for inventory changes (server fires this when an item is granted)
+InventoryChanged.OnClientEvent:Connect(function(itemName, count)
+    if itemName == "SupernovaScoreEffect" then
+        found = true
+        foundNumber = currentNumber
+        print(string.format("✅ Found SupernovaScoreEffect with number: %d", foundNumber))
+    end
+end)
+
+-- 5) Brute‑force loop from 1 to 10000
+task.spawn(function()
+    print("🚀 Starting brute‑force for SupernovaScoreEffect...")
+    
+    for i = 1, 10000 do
+        if found then break end   -- stop if we already got it
+        
+        currentNumber = i         -- store for the event handler
+        
+        local success, result = pcall(function()
+            return RequestRankedReward:InvokeServer(i)
+        end)
+        
+        if not success then
+            warn("Failed to invoke with", i, ":", result)
+        else
+            -- Optional: print progress every 100 attempts
+            if i % 100 == 0 then
+                print("Tested", i, "/ 10000")
+            end
+        end
+        
+        -- Wait to avoid rate‑limiting (adjust if needed)
+        task.wait(0.5)
+    end
+    
+    if not found then
+        print("❌ SupernovaScoreEffect not found in 1–10000")
+    else
+        print(string.format("🎉 Success! The correct number is %d", foundNumber))
+    end
+end)
