@@ -1,23 +1,110 @@
--- Listen to the REAL Reward event (server fires this when you claim a reward)
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Knit = ReplicatedStorage.Packages._Index["sleitnick_knit@1.7.0"].knit
-local RewardEvent = Knit.Services.SeasonService.RE.Reward
+-- ================================================================
+--  Brute‑force ALL Knit services for "SupernovaScoreEffect"
+-- ================================================================
 
-RewardEvent.OnClientEvent:Connect(function(...)
-    local args = {...}
-    print("📦 Reward event fired with arguments:")
-    for i, arg in ipairs(args) do
-        print(string.format("   Arg %d: %s", i, tostring(arg)))
-    end
-    -- If it's a table, print its contents
-    for i, arg in ipairs(args) do
-        if type(arg) == "table" then
-            print("   Table contents:")
-            for k, v in pairs(arg) do
-                print(string.format("      %s = %s", k, tostring(v)))
-            end
-        end
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Knit = ReplicatedStorage:WaitForChild("Packages")
+    :WaitForChild("_Index")
+    :WaitForChild("sleitnick_knit@1.7.0")
+    :WaitForChild("knit")
+
+local Services = Knit:WaitForChild("Services")
+
+-- Real InventoryChanged (server‑fired when an item is added)
+local InventoryChanged = Knit:WaitForChild("Services")
+    :WaitForChild("InventoryService")
+    :WaitForChild("RE")
+    :WaitForChild("InventoryChanged")
+
+local found = false
+local winningRemote = nil
+local winningNumber = nil
+local winningPattern = nil
+
+InventoryChanged.OnClientEvent:Connect(function(itemName, count)
+    if itemName == "SupernovaScoreEffect" then
+        found = true
+        winningNumber = count
+        print(string.format("\n🎉🎉🎉 SUCCESS! %s granted by remote %s with number %d (pattern: %s)",
+            itemName, tostring(winningRemote), winningNumber, winningPattern))
     end
 end)
 
-print("✅ Listener active. Now go claim a season reward manually (like tier 5) and watch the output.")
+-- Collect all RemoteFunctions from all services
+local remotes = {}
+for _, service in ipairs(Services:GetChildren()) do
+    if service:IsA("Folder") or service:IsA("Model") then
+        local rf = service:FindFirstChild("RF")
+        if rf then
+            for _, child in ipairs(rf:GetChildren()) do
+                if child:IsA("RemoteFunction") then
+                    table.insert(remotes, {
+                        remote = child,
+                        serviceName = service.Name,
+                        remoteName = child.Name
+                    })
+                end
+            end
+        end
+    end
+end
+
+print(string.format("🔍 Found %d RemoteFunctions across all services.", #remotes))
+
+-- Patterns to try (add more if needed)
+local patterns = {
+    { name = "Two args: ('SupernovaScoreEffect', i)", 
+      call = function(remote, i) return remote:InvokeServer("SupernovaScoreEffect", i) end },
+    { name = "Just number: (i)", 
+      call = function(remote, i) return remote:InvokeServer(i) end },
+    -- Uncomment if you suspect a table:
+    -- { name = "Table {Item='SupernovaScoreEffect', Value=i}", 
+    --   call = function(remote, i) return remote:InvokeServer({Item = "SupernovaScoreEffect", Value = i}) end },
+}
+
+task.spawn(function()
+    for _, remoteData in ipairs(remotes) do
+        if found then break end
+        local remote = remoteData.remote
+        local remoteFullName = remoteData.serviceName .. "." .. remoteData.remoteName
+
+        print(string.format("\n▶ Testing remote: %s", remoteFullName))
+
+        for _, pattern in ipairs(patterns) do
+            if found then break end
+            print(string.format("   Pattern: %s", pattern.name))
+
+            for i = 1, 100 do
+                if found then break end
+                winningRemote = remote
+                winningPattern = pattern.name
+
+                local success = pcall(pattern.call, remote, i)
+                if not success then
+                    -- Some patterns will error; just skip
+                end
+
+                if i % 10 == 0 then
+                    print(string.format("      %s: tested %d / 100", pattern.name, i))
+                end
+
+                task.wait(0.3) -- rate‑limit
+            end
+
+            if not found then
+                print(string.format("   ❌ Pattern '%s' didn't work for %s in 1–100", pattern.name, remoteFullName))
+            end
+        end
+    end
+
+    if not found then
+        print("\n❌ No remote granted SupernovaScoreEffect in the tested range (1–100).")
+        print("💡 Try:")
+        print("   - Increasing the number range to 500 or 1000.")
+        print("   - Adding more argument patterns (e.g., table with different field names).")
+        print("   - Checking remotes outside Knit (e.g., in ReplicatedStorage directly).")
+    else
+        print(string.format("\n✅ Found it! Use remote %s with number %d (pattern: %s)",
+            tostring(winningRemote), winningNumber, winningPattern))
+    end
+end)
