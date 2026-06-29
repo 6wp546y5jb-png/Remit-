@@ -1,5 +1,5 @@
 --[[
-    Complete Auto Lucky Spins Script
+    Complete Auto Lucky Spins Script (Invokes numbers 1-100)
     Execute this as a LocalScript (or in any executor)
 ]]
 
@@ -80,17 +80,24 @@ _G.LuckySpinsEnabled = false   -- global toggle (used by the loop)
 local loopRunning = false
 local loopCoroutine = nil
 
--- ===== 4. The main loop =====
+-- ===== 4. The main loop (now iterates 1 to 100) =====
 local function startLoop()
     if loopRunning then return end
     loopRunning = true
     loopCoroutine = task.spawn(function()
         while loopRunning do
             if _G.LuckySpinsEnabled then
-                pcall(function()
-                    remote:InvokeServer(5)
-                end)
-                task.wait(0.5)
+                -- Loop through numbers 1 to 100
+                for i = 1, 100 do
+                    -- Check if the toggle is still enabled, exit the for loop if not
+                    if not _G.LuckySpinsEnabled then
+                        break
+                    end
+                    pcall(function()
+                        remote:InvokeServer(i)
+                    end)
+                    task.wait(0.5)  -- Wait between each invoke
+                end
             else
                 task.wait(0.2)   -- wait a bit before checking again
             end
@@ -131,4 +138,4 @@ end)
 -- Start the loop (it will idle until toggled on)
 startLoop()
 
-print("Auto Lucky Spins GUI loaded. Toggle it to start farming.")
+print("Auto Lucky Spins GUI loaded. Toggle it to start farming (1-100).")
