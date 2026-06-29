@@ -6,41 +6,23 @@ local remote = game:GetService("ReplicatedStorage")
     :WaitForChild("Services")
     :WaitForChild("SeasonService")
     :WaitForChild("RF")
-    :WaitForChild("RequestRebirthReward")
+    :WaitForChild("RequestCurrencyRebirth")
 
-print("✅ Remote found at:", remote:GetFullName())
-
--- Comprehensive test cases
-local testCases = {
-    {},                                 -- No arguments
-    {"2"},                              -- Season ID as string (from config)
-    {2},                                -- Season ID as number
-    {5},                                -- Rebirth requirement count
-    {1},                                -- Tier index (worked on your other remote)
-    {"Supernova"},                      -- Display name
-    {"SupernovaScoreEffect"},           -- Exact script/item name (with 't')
-    {"SupernovaScoreEffecr"},           -- Your typo (just in case)
-    {"2", 5},                           -- Season string + rebirth count
-    {2, 5},                             -- Season number + rebirth count
-    {"2", 1},                           -- Season string + tier index
-    {2, 1},                             -- Season number + tier index
-    {"2", "SupernovaScoreEffect"},      -- Season string + item name
-    {2, "SupernovaScoreEffect"},        -- Season number + item name
+-- Try different arguments
+local testArgs = {
+    {},   -- no args
+    {35},  -- tier?
+    {16},  -- season?
+    {"16"} -- season string
 }
 
-for i, args in ipairs(testCases) do
+for i, args in ipairs(testArgs) do
     local success, result = pcall(function()
         return remote:InvokeServer(unpack(args))
     end)
-
+    print("Test", i, "→", success, result)
     if success then
-        print("✅ Test " .. i .. " SUCCEEDED with args:", unpack(args))
-        print("   Server response:", result)
-        print("🎯 THIS IS THE CORRECT FORMAT!")
-        break
-    else
-        print("❌ Test " .. i .. " failed with args:", unpack(args))
-        print("   Error:", result)
+        print("⚠️ Check your UI! Did your rebirth count go up?")
     end
-    task.wait(0.3)
+    task.wait(1)
 end
