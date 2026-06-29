@@ -1,141 +1,47 @@
---[[
-    Complete Auto Lucky Spins Script (Invokes numbers 1-100)
-    Execute this as a LocalScript (or in any executor)
-]]
+local player = game.Players.LocalPlayer
+local replicatedStorage = game:GetService("ReplicatedStorage")
 
-local Players = game:GetService("Players")
-local Player = Players.LocalPlayer
-local GuiService = game:GetService("GuiService")
+-- Locate SeasonService (adjust path if needed)
+local seasonService = replicatedStorage:FindFirstChild("SeasonService") 
+    or game:GetService("SeasonService") 
+    or replicatedStorage:FindFirstChild("Services"):FindFirstChild("SeasonService")
 
--- ===== 1. Locate the remote =====
-local remote
-pcall(function()
-    remote = game:GetService("ReplicatedStorage")
-        :WaitForChild("Packages")
-        :WaitForChild("_Index")
-        :WaitForChild("sleitnick_knit@1.7.0")
-        :WaitForChild("knit")
-        :WaitForChild("Services")
-        :WaitForChild("SeasonService")
-        :WaitForChild("RF")
-        :WaitForChild("RequestRankedReward")
-end)
-
-if not remote then
-    warn("Remote not found! Check the path or update the version.")
+if not seasonService then
+    warn("SeasonService not found")
     return
 end
 
--- ===== 2. Create GUI =====
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "AutoLuckySpinsGUI"
-screenGui.Parent = Player:WaitForChild("PlayerGui")
+local remote = seasonService:FindFirstChild("RequestRebirthReward")
+if not remote then
+    warn("Remote not found")
+    return
+end
 
--- Main Frame
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0, 250, 0, 100)
-frame.Position = UDim2.new(0.5, -125, 0.5, -50)
-frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-frame.BorderSizePixel = 0
-frame.BackgroundTransparency = 0.1
-frame.Active = true
-frame.Draggable = true
-frame.Parent = screenGui
+-- Test different argument formats
+local testCases = {
+    { "2" },        -- Season ID as string (from config)
+    { 2 },          -- Season ID as number
+    { 5 },          -- Rebirth count (5)
+    { 1 },          -- Tier index (like the other remote)
+    { "2", 5 },     -- Season ID + rebirth count
+    { "2", 1 },     -- Season ID + tier index
+    { 2, 5 },       -- Number season ID + rebirth count
+    {}              -- No arguments
+}
 
--- Title
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Position = UDim2.new(0, 0, 0, 0)
-title.BackgroundTransparency = 1
-title.Text = "Auto Lucky Spins"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextScaled = true
-title.Font = Enum.Font.GothamBold
-title.Parent = frame
-
--- Toggle Button
-local toggleBtn = Instance.new("TextButton")
-toggleBtn.Size = UDim2.new(0.8, 0, 0, 40)
-toggleBtn.Position = UDim2.new(0.1, 0, 0.4, 0)
-toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-toggleBtn.Text = "Enable"
-toggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleBtn.TextScaled = true
-toggleBtn.Font = Enum.Font.GothamBold
-toggleBtn.Parent = frame
-
--- Status label
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, 0, 0, 20)
-statusLabel.Position = UDim2.new(0, 0, 0.8, 0)
-statusLabel.BackgroundTransparency = 1
-statusLabel.Text = "Status: Off"
-statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-statusLabel.TextScaled = true
-statusLabel.Font = Enum.Font.Gotham
-statusLabel.Parent = frame
-
--- ===== 3. Control variables =====
-_G.LuckySpinsEnabled = false   -- global toggle (used by the loop)
-local loopRunning = false
-local loopCoroutine = nil
-
--- ===== 4. The main loop (now iterates 1 to 100) =====
-local function startLoop()
-    if loopRunning then return end
-    loopRunning = true
-    loopCoroutine = task.spawn(function()
-        while loopRunning do
-            if _G.LuckySpinsEnabled then
-                -- Loop through numbers 1 to 100
-                for i = 1, 100 do
-                    -- Check if the toggle is still enabled, exit the for loop if not
-                    if not _G.LuckySpinsEnabled then
-                        break
-                    end
-                    pcall(function()
-                        remote:InvokeServer(i)
-                    end)
-                    task.wait(0.5)  -- Wait between each invoke
-                end
-            else
-                task.wait(0.2)   -- wait a bit before checking again
-            end
-        end
+for i, args in ipairs(testCases) do
+    local success, result = pcall(function()
+        return remote:InvokeServer(unpack(args))
     end)
-end
-
--- ===== 5. Toggle function =====
-local function toggleState()
-    _G.LuckySpinsEnabled = not _G.LuckySpinsEnabled
-    if _G.LuckySpinsEnabled then
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-        toggleBtn.Text = "Disable"
-        statusLabel.Text = "Status: Running"
-        if not loopRunning then
-            startLoop()
-        end
+    
+    if success then
+        print("✅ Test " .. i .. " succeeded with args:", unpack(args))
+        print("   Response:", result)
+        -- If it succeeded, this is the correct format!
+        break
     else
-        toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        toggleBtn.Text = "Enable"
-        statusLabel.Text = "Status: Off"
+        print("❌ Test " .. i .. " failed with args:", unpack(args))
+        print("   Error:", result)
     end
+    task.wait(0.5) -- Avoid spamming
 end
-
--- ===== 6. Connect button =====
-toggleBtn.MouseButton1Click:Connect(toggleState)
-
--- ===== 7. Clean up when GUI is destroyed =====
-screenGui.AncestryChanged:Connect(function()
-    if not screenGui.Parent then
-        loopRunning = false
-        if loopCoroutine then
-            task.cancel(loopCoroutine)
-        end
-    end
-end)
-
--- Start the loop (it will idle until toggled on)
-startLoop()
-
-print("Auto Lucky Spins GUI loaded. Toggle it to start farming (1-100).")
