@@ -1,23 +1,51 @@
--- Locate the InventoryChanged event (client side)
+-- ============================================================
+--  Remote Lister – Scans and prints every RemoteEvent/RemoteFunction
+--  in the game. No invoking or firing – just listing.
+-- ============================================================
+
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local InventoryChanged = ReplicatedStorage.Packages._Index["sleitnick_knit@1.7.0"].knit.Services.InventoryService.RE.InventoryChanged
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
--- Loop through numbers 1 to 10000, firing the event locally with each one
-task.spawn(function()
-    print("🚀 Firing InventoryChanged for SupernovaScoreEffect from 1 to 10000...")
+local remotes = {}
 
-    for i = 1, 10000 do
-        pcall(function()
-            firesignal(InventoryChanged.OnClientEvent, "SupernovaScoreEffect", i)
-        end)
-
-        -- Optional: print progress every 100 iterations
-        if i % 100 == 0 then
-            print("Fired number:", i)
+-- Recursively scan a folder/instance and collect remotes
+local function scanFolder(folder, path)
+    path = path or ""
+    for _, child in ipairs(folder:GetChildren()) do
+        local currentPath = path .. "/" .. child.Name
+        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
+            table.insert(remotes, {
+                name = child.Name,
+                className = child.ClassName,
+                fullPath = currentPath,
+                parent = child.Parent
+            })
         end
-
-        task.wait(0.1) -- tiny delay to avoid overwhelming the client
+        if child:IsA("Folder") or child:IsA("Model") or child:IsA("Tool") then
+            scanFolder(child, currentPath)
+        end
     end
+end
 
-    print("✅ Finished firing all numbers 1–10000")
-end)
+-- Scan common containers
+print("🔍 Scanning for RemoteEvents / RemoteFunctions...")
+scanFolder(ReplicatedStorage, "ReplicatedStorage")
+scanFolder(LocalPlayer:WaitForChild("PlayerScripts"), "PlayerScripts")
+scanFolder(game:GetService("Workspace"), "Workspace")
+scanFolder(game:GetService("StarterGui"), "StarterGui")
+-- Optionally, you can add more: StarterPack, ServerScriptService (but those are server-side, not accessible), etc.
+
+-- Print results
+print(string.format("\n✅ Found %d remote objects:\n", #remotes))
+
+for i, rem in ipairs(remotes) do
+    print(string.format("%d) %s  [%s]\n   Path: %s",
+        i,
+        rem.name,
+        rem.className,
+        rem.fullPath
+    ))
+end
+
+print("\n📌 Done. You can now manually inspect these remotes.")
