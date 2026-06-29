@@ -1,51 +1,58 @@
 -- ============================================================
---  Remote Lister – Scans and prints every RemoteEvent/RemoteFunction
---  in the game. No invoking or firing – just listing.
+--  Knit Services Lister
+--  Prints every service inside Knit.Services, and lists its
+--  RemoteFunctions (RF) and RemoteEvents (RE).
 -- ============================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
+local Knit = ReplicatedStorage:WaitForChild("Packages")
+    :WaitForChild("_Index")
+    :WaitForChild("sleitnick_knit@1.7.0")
+    :WaitForChild("knit")
 
-local remotes = {}
+local services = Knit:WaitForChild("Services")
 
--- Recursively scan a folder/instance and collect remotes
-local function scanFolder(folder, path)
-    path = path or ""
-    for _, child in ipairs(folder:GetChildren()) do
-        local currentPath = path .. "/" .. child.Name
-        if child:IsA("RemoteEvent") or child:IsA("RemoteFunction") then
-            table.insert(remotes, {
-                name = child.Name,
-                className = child.ClassName,
-                fullPath = currentPath,
-                parent = child.Parent
-            })
+print("\n🔍 Listing all Knit Services and their remotes:\n")
+
+-- Loop through all children of Services
+for _, service in ipairs(services:GetChildren()) do
+    if service:IsA("Folder") or service:IsA("Model") then
+        print("📁 Service:", service.Name)
+
+        -- Check for RF folder (RemoteFunctions)
+        local rf = service:FindFirstChild("RF")
+        if rf then
+            local remotes = rf:GetChildren()
+            if #remotes > 0 then
+                print("   └── RF (RemoteFunctions):")
+                for _, r in ipairs(remotes) do
+                    print("       ├── " .. r.Name .. " (" .. r.ClassName .. ")")
+                end
+            else
+                print("   └── RF (empty)")
+            end
+        else
+            print("   └── No RF folder")
         end
-        if child:IsA("Folder") or child:IsA("Model") or child:IsA("Tool") then
-            scanFolder(child, currentPath)
+
+        -- Check for RE folder (RemoteEvents)
+        local re = service:FindFirstChild("RE")
+        if re then
+            local remotes = re:GetChildren()
+            if #remotes > 0 then
+                print("   └── RE (RemoteEvents):")
+                for _, r in ipairs(remotes) do
+                    print("       ├── " .. r.Name .. " (" .. r.ClassName .. ")")
+                end
+            else
+                print("   └── RE (empty)")
+            end
+        else
+            print("   └── No RE folder")
         end
+
+        print("") -- blank line between services
     end
 end
 
--- Scan common containers
-print("🔍 Scanning for RemoteEvents / RemoteFunctions...")
-scanFolder(ReplicatedStorage, "ReplicatedStorage")
-scanFolder(LocalPlayer:WaitForChild("PlayerScripts"), "PlayerScripts")
-scanFolder(game:GetService("Workspace"), "Workspace")
-scanFolder(game:GetService("StarterGui"), "StarterGui")
--- Optionally, you can add more: StarterPack, ServerScriptService (but those are server-side, not accessible), etc.
-
--- Print results
-print(string.format("\n✅ Found %d remote objects:\n", #remotes))
-
-for i, rem in ipairs(remotes) do
-    print(string.format("%d) %s  [%s]\n   Path: %s",
-        i,
-        rem.name,
-        rem.className,
-        rem.fullPath
-    ))
-end
-
-print("\n📌 Done. You can now manually inspect these remotes.")
+print("✅ Done listing all services.")
