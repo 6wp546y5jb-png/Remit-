@@ -1,56 +1,23 @@
--- ================================================================
---  Test RequestRebirthReward with "SupernovaScoreEffect" + number
--- ================================================================
-
+-- Listen to the REAL Reward event (server fires this when you claim a reward)
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Knit = ReplicatedStorage:WaitForChild("Packages")
-    :WaitForChild("_Index")
-    :WaitForChild("sleitnick_knit@1.7.0")
-    :WaitForChild("knit")
+local Knit = ReplicatedStorage.Packages._Index["sleitnick_knit@1.7.0"].knit
+local RewardEvent = Knit.Services.SeasonService.RE.Reward
 
-local RequestRebirthReward = Knit:WaitForChild("Services")
-    :WaitForChild("SeasonService")
-    :WaitForChild("RF")
-    :WaitForChild("RequestRebirthReward")
-
-local InventoryChanged = Knit:WaitForChild("Services")
-    :WaitForChild("InventoryService")
-    :WaitForChild("RE")
-    :WaitForChild("InventoryChanged")
-
-local found = false
-local winningNumber = nil
-
-InventoryChanged.OnClientEvent:Connect(function(itemName, count)
-    if itemName == "SupernovaScoreEffect" then
-        found = true
-        winningNumber = count
-        print(string.format("\n🎉 SUCCESS! SupernovaScoreEffect granted with number %d", winningNumber))
+RewardEvent.OnClientEvent:Connect(function(...)
+    local args = {...}
+    print("📦 Reward event fired with arguments:")
+    for i, arg in ipairs(args) do
+        print(string.format("   Arg %d: %s", i, tostring(arg)))
     end
-end)
-
-task.spawn(function()
-    print("🔍 Testing RequestRebirthReward with 'SupernovaScoreEffect' + number (1–100)...")
-
-    for i = 1, 100 do
-        if found then break end
-
-        local success, result = pcall(function()
-            -- Send the item name and the number as two arguments
-            RequestRebirthReward:InvokeServer("SupernovaScoreEffect", i)
-        end)
-
-        if i % 10 == 0 then
-            print(string.format("   Tested %d / 100", i))
+    -- If it's a table, print its contents
+    for i, arg in ipairs(args) do
+        if type(arg) == "table" then
+            print("   Table contents:")
+            for k, v in pairs(arg) do
+                print(string.format("      %s = %s", k, tostring(v)))
+            end
         end
-
-        task.wait(0.3)
-    end
-
-    if not found then
-        print("\n❌ Not found in 1–100.")
-        print("💡 Try increasing to 10000, or try just sending the number alone.")
-    else
-        print(string.format("\n✅ Found it! Use number %d", winningNumber))
     end
 end)
+
+print("✅ Listener active. Now go claim a season reward manually (like tier 5) and watch the output.")
