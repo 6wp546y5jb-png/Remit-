@@ -1,6 +1,6 @@
--- ============================================================
---  Brute-force RequestRebirthReward for SupernovaScoreEffect
--- ============================================================
+-- ================================================================
+--  Test RequestRebirthReward with "SupernovaScoreEffect" + number
+-- ================================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Knit = ReplicatedStorage:WaitForChild("Packages")
@@ -8,13 +8,11 @@ local Knit = ReplicatedStorage:WaitForChild("Packages")
     :WaitForChild("sleitnick_knit@1.7.0")
     :WaitForChild("knit")
 
--- The remote you want to test
 local RequestRebirthReward = Knit:WaitForChild("Services")
     :WaitForChild("SeasonService")
     :WaitForChild("RF")
     :WaitForChild("RequestRebirthReward")
 
--- The real InventoryChanged event (fired by the server when an item is granted)
 local InventoryChanged = Knit:WaitForChild("Services")
     :WaitForChild("InventoryService")
     :WaitForChild("RE")
@@ -22,41 +20,60 @@ local InventoryChanged = Knit:WaitForChild("Services")
 
 local found = false
 local winningNumber = nil
+local winningPattern = nil
 
--- Listen for the server saying we got the item
 InventoryChanged.OnClientEvent:Connect(function(itemName, count)
     if itemName == "SupernovaScoreEffect" then
         found = true
         winningNumber = count
-        print(string.format("🎉 SUCCESS! SupernovaScoreEffect granted with number: %d", winningNumber))
+        print(string.format("\n🎉🎉🎉 SUCCESS! SupernovaScoreEffect granted with number %d (pattern: %s)", winningNumber, winningPattern))
     end
 end)
 
--- Brute‑force loop
+-- Possible invocation patterns to try
+local patterns = {
+    { name = "Table {Item='SupernovaScoreEffect', Cap=i}", 
+      call = function(i) return RequestRebirthReward:InvokeServer({Item = "SupernovaScoreEffect", Cap = i}) end },
+    { name = "Two args: ('SupernovaScoreEffect', i)", 
+      call = function(i) return RequestRebirthReward:InvokeServer("SupernovaScoreEffect", i) end },
+    -- Add more if needed: { name = "Just number (i)", call = function(i) return RequestRebirthReward:InvokeServer(i) end }
+}
+
 task.spawn(function()
-    print("🚀 Testing RequestRebirthReward with numbers 1 to 10000...")
-    for i = 1, 10000 do
+    print("🔍 Testing RequestRebirthReward with 'SupernovaScoreEffect' and numbers 1–100...")
+
+    for _, pattern in ipairs(patterns) do
         if found then break end
+        print("\n▶ Trying pattern:", pattern.name)
 
-        local success, result = pcall(function()
-            RequestRebirthReward:InvokeServer(i)
-        end)
+        for i = 1, 100 do
+            if found then break end
 
-        if not success then
-            -- Some numbers might error (e.g., if they're invalid), we just skip
-            -- Optionally print if you want: warn("Error with", i, result)
+            local success, result = pcall(pattern.call, i)
+            if not success then
+                -- Some patterns might error; skip silently
+            end
+
+            if i % 10 == 0 then
+                print(string.format("   %s: tested %d / 100", pattern.name, i))
+            end
+
+            task.wait(0.3) -- avoid rate‑limiting
         end
 
-        -- Show progress every 100 tries
-        if i % 100 == 0 then
-            print("Tested", i, "/ 10000")
+        if not found then
+            print(string.format("   ❌ Pattern '%s' did not grant the item in 1–100", pattern.name))
         end
-
-        task.wait(0.3)  -- Adjust to avoid rate‑limiting (0.3s is safe)
     end
 
     if not found then
-        print("❌ SupernovaScoreEffect not found in 1–10000.")
-        print("💡 Try increasing the range (e.g., to 50000) or check if the remote is correct.")
+        print("\n❌ No pattern worked with numbers 1–100.")
+        print("💡 Try:")
+        print("   - Increasing the range to 1000 or 10000.")
+        print("   - Changing the field names (e.g., 'cap' instead of 'Cap').")
+        print("   - Testing other remotes like 'RequestRewardClaim'.")
+        print("   - Using a different table structure, e.g., {reward = 'SupernovaScoreEffect', value = i}.")
+    else
+        print(string.format("\n✅ Found it! Use pattern '%s' with number %d", winningPattern, winningNumber))
     end
 end)
